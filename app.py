@@ -114,17 +114,18 @@ def predict():
     try:
         pred_label, probs, warna, tekstur, bentuk = predict_hybrid(file_path)
         result = {
-            'prediction': pred_label,
-            'probabilities': {label_encoder.inverse_transform([i])[0]: prob for i, prob in enumerate(probs)},
+            'prediction': str(pred_label) if pred_label is not None else '',
+            'probabilities': {str(label_encoder.inverse_transform([i])): float(prob) for i, prob in enumerate(probs)}},
             'features': {
-                'warna': warna,
-                'tekstur': tekstur,
-                'bentuk': bentuk
+                'warna': [float(w) for w in warna],
+                'tekstur': [float(t) for t in tekstur],
+                'bentuk': [float(b) for b in bentuk]
             }
         }
         return jsonify(result)
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        print('Server error: ',e)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/', methods=['GET'])
 def health_check():
