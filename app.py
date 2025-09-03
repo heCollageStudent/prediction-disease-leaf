@@ -96,70 +96,35 @@ def predict_hybrid(image_path):
     pred_index = np.argmax(probs)
     pred_label = label_encoder.inverse_transform([pred_index])[0]
 
-    return pred_label, probs, warna, tekstur, bentuk  # Return the extracted features too
+    return pred_label, probs, warna.tolist(), tekstur.tolist(), bentuk.tolist()  # Convert arrays to lists for JSON serialization
 
 # API endpoint untuk prediksi
-@app.route("/predict", methods=["POST"])
+@app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return jsonify({'error': 'No file part'}), 400
 
-    file = request.files['file'].read()
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    file_path = os.path.join('/tmp', file.filename)
+    file.save(file_path)
+
     try:
-        # Decode image
-        img = cv2.imdecode(np.frombuffer(file, np.uint8), cv2.IMREAD_COLOR)
-        if img is None:
-            return jsonify({"error": "Image could not be read"}), 400
-
-        # Ekstraksi fitur CNN dan manual
-        fitur_cnn = cnn_base.predict(cnn_img, verbose=0)[0]
-        warna, tekstur, bentuk = extract_fitur_manual(img)
-        fitur_manual = np.concatenate([warna, tekstur, bentuk])
-
-        # Gabung input dan prediksi
-        combined_input = [np.expand_dims(fitur_cnn, axis=0), np.expand_dims(fitur_manual, axis=0)]
-        probs = model.predict(combined_input, verbose=0)[0]
-
-        # Format hasil prediksi
-        pred_index = np.argmax(probs)
-        pred_label = label_encoder.inverse_transform([pred_index])[0]
-        prob_dict = {label_encoder.inverse_transform([i])[0]: round(float(p) * 100, 2) for i, p in enumerate(probs)}
-
-        # Menyusun hasil prediksi dan fitur
+        pred_label, probs, warna, tekstur, bentuk = predict_hybrid(file_path)
         result = {
-            "prediction": pred_label,
-            "probabilities": prob_dict,
-            "features": {
-                "L_mean": warna[0],
-                "L_std": warna[1],
-                "a_mean": warna[2],
-                "a_std": warna[3],
-                "b_mean": warna[4],
-                "b_std": warna[5],
-                "contrast": tekstur[0],
-                "dissimilarity": tekstur[1],
-                "homogeneity": tekstur[2],
-                "energy": tekstur[3],
-                "correlation": tekstur[4],
-                "area": bentuk[0],
-                "perimeter": bentuk[1],
-                "width": bentuk[2],
-                "height": bentuk[3],
-                "aspect_ratio": bentuk[4],
-                "circularity": bentuk[5],
-                "rectangularity": bentuk[6],
-                "diameter": bentuk[7],
+            'prediction': pred_label,
+            'probabilities': {label_encoder.inverse_transform([i])[0]: prob for i, prob in enumerate(probs)},
+            'features': {
+                'warna': warna,
+                'tekstur': tekstur,
+                'bentuk': bentuk
             }
         }
-
-        # Pastikan hasilnya valid dan bisa di-serialize
-        print(f"Prediction Result: {result}")
-
-        # Kembalikan hasil sebagai JSON
         return jsonify(result)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/', methods=['GET'])
 def health_check():
