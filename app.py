@@ -127,5 +127,9 @@ def predict():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({"status": "success", "message": "API is running"})
+    
 if __name__ == '__main__':
     app.run(debug=True)
