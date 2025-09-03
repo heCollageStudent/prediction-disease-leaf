@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # Install dependencies for OpenCV
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libx11-dev \
     && rm -rf /var/lib/apt/lists/*
 
