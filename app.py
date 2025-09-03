@@ -21,6 +21,7 @@ label_encoder = joblib.load('label_encoder2.pkl')
 
 cnn_base = MobileNetV2(weights='imagenet', include_top=False, pooling='avg', input_shape=(224, 224, 3))
 
+# Fungsi ekstraksi fitur manual
 def extract_fitur_manual(img):
     # Warna
     img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
@@ -58,6 +59,7 @@ def extract_fitur_manual(img):
 
     return fitur_warna, fitur_tekstur, fitur_bentuk
 
+# Fungsi prediksi
 def predict_hybrid(image_path):
     img = cv2.imread(image_path)
     if img is None:
@@ -94,12 +96,11 @@ def predict_hybrid(image_path):
     pred_index = np.argmax(probs)
     pred_label = label_encoder.inverse_transform([pred_index])[0]
 
-    return pred_label, probs, fitur_warna, fitur_tekstur, fitur_bentuk  # Return the extracted features too
+    return pred_label, probs, warna, tekstur, bentuk  # Return the extracted features too
 
 # API endpoint untuk prediksi
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Ambil gambar dari request
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
 
@@ -107,11 +108,9 @@ def predict():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
-    # Simpan gambar ke server sementara
     file_path = os.path.join('/tmp', file.filename)
     file.save(file_path)
 
-    # Lakukan prediksi
     try:
         pred_label, probs, warna, tekstur, bentuk = predict_hybrid(file_path)
         result = {
@@ -133,4 +132,3 @@ def health_check():
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
