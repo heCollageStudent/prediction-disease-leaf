@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import cv2
 import joblib
+import os
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
@@ -70,6 +71,7 @@ def predict_hybrid(image_path):
 
     warna, tekstur, bentuk = extract_fitur_manual(img)
 
+    # Gabungkan semua fitur manual
     warna_cols = ['L_mean', 'L_std', 'a_mean', 'a_std', 'b_mean', 'b_std']
     tekstur_cols = ['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation']
     bentuk_cols = ['area', 'perimeter', 'width', 'height', 'aspect_ratio', 'circularity', 'rectangularity', 'diameter']
@@ -84,17 +86,20 @@ def predict_hybrid(image_path):
 
     fitur_manual = np.concatenate([warna_scaled[0], tekstur_scaled[0], bentuk_scaled[0]])
 
+    # Gabungkan CNN dan manual
     combined_input = [np.expand_dims(fitur_cnn, axis=0), np.expand_dims(fitur_manual, axis=0)]
 
+    # Prediksi
     probs = model.predict(combined_input)[0]
     pred_index = np.argmax(probs)
     pred_label = label_encoder.inverse_transform([pred_index])[0]
 
-    return pred_label, probs
+    return pred_label, probs, fitur_warna, fitur_tekstur, fitur_bentuk  # Return the extracted features too
 
 # API endpoint untuk prediksi
 @app.route('/predict', methods=['POST'])
 def predict():
+    # Ambil gambar dari request
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
 
@@ -102,14 +107,21 @@ def predict():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
+    # Simpan gambar ke server sementara
     file_path = os.path.join('/tmp', file.filename)
     file.save(file_path)
 
+    # Lakukan prediksi
     try:
-        pred_label, probs = predict_hybrid(file_path)
+        pred_label, probs, warna, tekstur, bentuk = predict_hybrid(file_path)
         result = {
             'prediction': pred_label,
-            'probabilities': {label_encoder.inverse_transform([i])[0]: prob for i, prob in enumerate(probs)}
+            'probabilities': {label_encoder.inverse_transform([i])[0]: prob for i, prob in enumerate(probs)},
+            'features': {
+                'warna': warna.tolist(),
+                'tekstur': tekstur.tolist(),
+                'bentuk': bentuk.tolist()
+            }
         }
         return jsonify(result)
     except ValueError as e:
