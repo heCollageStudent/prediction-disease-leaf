@@ -78,27 +78,51 @@ def predict_hybrid(image_path):
     cnn_img = np.expand_dims(cnn_img, axis=0)
     fitur_cnn = cnn_base.predict(cnn_img)[0]
     warna, tekstur, bentuk = extract_fitur_manual(img)
-    # Gabungkan semua fitur manual
+
+    # Menyusun nama fitur untuk setiap kategori
     warna_cols = ['L_mean', 'L_std', 'a_mean', 'a_std', 'b_mean', 'b_std']
     tekstur_cols = ['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation']
     bentuk_cols = ['area', 'perimeter', 'width', 'height', 'aspect_ratio', 'circularity', 'rectangularity', 'diameter']
+
+    # Membuat dataframe untuk setiap fitur
     df_warna = pd.DataFrame([warna], columns=warna_cols)
     df_tekstur = pd.DataFrame([tekstur], columns=tekstur_cols)
     df_bentuk = pd.DataFrame([bentuk], columns=bentuk_cols)
+
+    # Menormalisasi fitur
     warna_scaled = scaler_warna.transform(df_warna)
     tekstur_scaled = scaler_tekstur.transform(df_tekstur)
     bentuk_scaled = scaler_bentuk.transform(df_bentuk)
+
     fitur_manual = np.concatenate([warna_scaled[0], tekstur_scaled[0], bentuk_scaled[0]])
-    # Gabungkan CNN dan manual
+
+    # Menggabungkan fitur CNN dan manual
     combined_input = [
         np.expand_dims(fitur_cnn, axis=0),
         np.expand_dims(fitur_manual, axis=0)
     ]
     probs = model.predict(combined_input)[0]
+    
+    # Mengubah probabilitas ke dalam persentase
+    probs_percentage = {label_encoder.inverse_transform([i])[0]: float(prob * 100) for i, prob in enumerate(probs)}
+
+    # Mendapatkan prediksi label
     pred_index = np.argmax(probs)
     pred_label = label_encoder.inverse_transform([pred_index])[0]
-    return pred_label, probs, warna.tolist(), tekstur.tolist(), bentuk.tolist()  # Convert arrays to lists for JSON serialization
 
+    # Membuat struktur JSON untuk hasil
+    result = {
+        'prediction': str(pred_label) if pred_label is not None else '',
+        'probabilities': probs_percentage,  # Probabilitas sebagai persentase
+        'features': {
+            'warna': {warna_cols[i]: float(w) for i, w in enumerate(warna)},  # Nama fitur warna
+            'tekstur': {tekstur_cols[i]: float(t) for i, t in enumerate(tekstur)},  # Nama fitur tekstur
+            'bentuk': {bentuk_cols[i]: float(b) for i, b in enumerate(bentuk)}  # Nama fitur bentuk
+        }
+    }
+    
+    return result
+    
 # API endpoint untuk prediksi
 @app.route('/predict', methods=['POST'])
 def predict():
