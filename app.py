@@ -79,6 +79,10 @@ def predict_hybrid(image_path):
     fitur_cnn = cnn_base.predict(cnn_img)[0]
     warna, tekstur, bentuk = extract_fitur_manual(img)
 
+    # Cek panjang array warna, tekstur, dan bentuk
+    if len(warna) == 0 or len(tekstur) == 0 or len(bentuk) == 0:
+        return {"error": "Fitur warna, tekstur, atau bentuk tidak ditemukan."}
+
     # Menyusun nama fitur untuk setiap kategori
     warna_cols = ['L_mean', 'L_std', 'a_mean', 'a_std', 'b_mean', 'b_std']
     tekstur_cols = ['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation']
@@ -120,7 +124,7 @@ def predict_hybrid(image_path):
             'bentuk': {bentuk_cols[i]: float(b) for i, b in enumerate(bentuk)}  # Nama fitur bentuk
         }
     }
-    
+
     return result
     
 # API endpoint untuk prediksi
