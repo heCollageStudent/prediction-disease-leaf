@@ -138,19 +138,7 @@ def predict():
     file_path = os.path.join('/tmp', file.filename)
     file.save(file_path)
     try:
-        pred_label, probs, warna, tekstur, bentuk = predict_hybrid(file_path)
-        result = {
-            'prediction': str(pred_label) if pred_label is not None else '',
-            'probabilities': {
-                str(label_encoder.inverse_transform([i])[0]): float(prob)
-                for i, prob in enumerate(probs)
-            },
-            'features': {
-                'warna': [float(w) for w in warna],
-                'tekstur': [float(t) for t in tekstur],
-                'bentuk': [float(b) for b in bentuk]
-            }
-        }
+        result = predict_hybrid(file_path)
         return jsonify(result)
     except Exception as e:
         print('Server error:', e)
