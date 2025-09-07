@@ -108,7 +108,10 @@ def predict_hybrid(image_path):
     probs = model.predict(combined_input)[0]
     
     # Mengubah probabilitas ke dalam persentase
-    probs_percentage = {label_encoder.inverse_transform([i])[0]: float(prob * 100) for i, prob in enumerate(probs)}
+    probs_percentage = {
+        label_encoder.inverse_transform([i])[0]: float(prob * 100)
+        for i, prob in enumerate(probs)
+    }
 
     # Mendapatkan prediksi label
     pred_index = np.argmax(probs)
@@ -117,7 +120,7 @@ def predict_hybrid(image_path):
     # Membuat struktur JSON untuk hasil
     result = {
         'prediction': str(pred_label) if pred_label is not None else '',
-        'probabilities': probs_percentage,  # Probabilitas sebagai persentase
+        'probabilities': probs_percentage,
         'features': {
             'warna': {warna_cols[i]: float(w) for i, w in enumerate(warna)},  # Nama fitur warna
             'tekstur': {tekstur_cols[i]: float(t) for i, t in enumerate(tekstur)},  # Nama fitur tekstur
